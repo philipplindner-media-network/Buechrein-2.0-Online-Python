@@ -10,7 +10,7 @@ def md5_hash(text):
     return hashlib.md5(text.encode()).hexdigest()
 
 def offne_info():
-    webbrowser.open("https://buch-archiv20-software.de/informationen-zu-der-python-anwendung")
+    webbrowser.open("https://py-setup.buch-archiv20-software.de/python_setup.php")
 
 def teste_db_verbindung(host, user, password, database):
     try:
