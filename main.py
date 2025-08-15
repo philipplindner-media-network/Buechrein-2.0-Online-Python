@@ -20,7 +20,7 @@ felder = [
 # Dropdown-Optionen
 doppelband_optionen = ["Ja", "Nein"]
 typ_optionen = [
-    "Manga", "Anime", "Comics", "Buch", "AnimeComics", "CD",
+    "Manga", "Anime", "Comics", "Buch", "eBook", "AnimeComics", "CD",
     "Schallplatte", "DVD", "VHS", "Blu-Ray", "Spiele"
 ]
 zustand_optionen = ["Sehr Gut", "Gut", "Mittel", "Schlecht", "Sehr Schlecht"]
