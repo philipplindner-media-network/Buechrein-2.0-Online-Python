@@ -1,0 +1,10 @@
+# Hauptabhängigkeiten, entnommen aus setup.py und all.py
+mysql-connector-python>=8.0.32
+requests>=2.28.0
+Pillow>=9.0.0
+python-vlc>=3.0.0
+
+# Hinweise:
+# - tkinter ist Teil der Standardbibliothek (nicht via pip). Auf Debian/Ubuntu: sudo apt install python3-tk
+# - Für VLC-Playback muss das native LibVLC / VLC installiert sein (z.B. sudo apt install vlc libvlc-dev)
+# - mysql-connector-python stellt mysql.connector bereit, die DB selbst (MySQL/MariaDB) muss separat installiert/konfiguriert werden.
