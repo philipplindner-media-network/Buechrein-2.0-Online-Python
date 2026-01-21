@@ -1,0 +1,14 @@
+{
+    "PROGRAMM_LINKS": {
+        "WEBSITE": "https://buch-archiv20-software.de/",
+        "FORUM": "https://forum.buch-archiv20-software.de/",
+        "GITHUB_REPO": "https://github.com/philipplindner-media-network/Buechrein-2.0-Online-Python",
+        "SUPPORT_FORMULAR": "https://support.buch-archiv20-software.de/"
+    },
+    "UPDATE_CONFIG": {
+        "LOCAL_VERSION": "2.0.1",
+        "UPDATE_CHECK_URL": "https://buch-archiv20-software.de/api/check_version.php"
+    },
+    "open_count": 9,
+    "STATISTICS_URL": "https://buch-archiv20-software.de/api/receive_stats.php"
+}
