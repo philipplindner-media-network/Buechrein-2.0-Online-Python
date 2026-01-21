@@ -325,83 +325,94 @@ class UserInfoModul:
                   command=self.check_for_update, bg="orange").pack(pady=10, fill="x", padx=10)
 
     def check_for_update(self):
-        """Fragt die Update-API ab, vergleicht Versionen und informiert den Benutzer."""
-        global status_label # Nutzt das globale Status-Label
+        """Prüft auf Updates und startet bei Ja den Auto-Installer."""
+        # 1. Konfiguration laden
         update_config = self.progpen_config.get("UPDATE_CONFIG", {})
-        local_version = update_config.get("LOCAL_VERSION", "Unbekannt")
-        update_url = update_config.get("UPDATE_CHECK_URL")
+        local_version = update_config.get("LOCAL_VERSION", "2.1.0")
+        # Deine feste API-URL
+        update_url = "https://buch-archiv20-software.de/api/check_version.php"
 
-        # Aktualisiert den Status sofort
-        if status_label:
-            status_label.config(text="ℹ️ Prüfe auf Updates...", fg="orange")
-
-        if not update_url:
-            messagebox.showwarning("Update Fehler", "Update-URL fehlt in progPen.json. Keine automatische Prüfung möglich.")
-            if status_label:
-                status_label.config(text="❌ Update-Check fehlgeschlagen (Konfigurationsfehler).", fg="red")
-            return
+        # Status-Anzeige (versucht self.status_label zu nutzen)
+        label = getattr(self, 'status_label', None)
+        if label: label.config(text="ℹ️ Prüfe auf Updates...", fg="orange")
 
         try:
-            # 1. API-Anfrage senden
-            response = requests.get(update_url, timeout=10) # Setzt Timeout
-            response.raise_for_status() # Löst Fehler bei 4xx/5xx Statuscodes aus
+            # 2. Server abfragen
+            response = requests.get(update_url, timeout=10)
+            response.raise_for_status()
             data = response.json()
 
-            # 2. Daten extrahieren
             latest_version = data.get("latest_version")
-            download_url = data.get("download_url")
+            download_url = data.get("download_url") # Muss ein Link zu einer .zip sein!
 
-            if not latest_version:
-                 messagebox.showwarning("Update Fehler", "Antwort vom Server unvollständig (latest_version fehlt).")
-                 if status_label:
-                    status_label.config(text="❌ Server-Antwort unvollständig.", fg="red")
-                 return
+            # Versions-Vergleichs-Logik
+            def parse_v(v): return tuple(map(int, str(v).split('.')))
 
-            # 3. Versionsvergleich (Robuster Vergleich von Major.Minor.Patch)
-            def parse_version(v_str):
-                try:
-                    return tuple(map(int, v_str.split('.')))
-                except ValueError:
-                    # Fallback für ungültige Versionsstrings
-                    return (0, 0, 0)
+            if parse_v(latest_version) > parse_v(local_version):
+                if label: label.config(text=f"🚀 Update {latest_version} verfügbar!", fg="red")
 
-            local_v = parse_version(local_version)
-            latest_v = parse_version(latest_version)
-
-            if latest_v > local_v:
-                # Update verfügbar
-                if status_label:
-                    status_label.config(text=f"🚀 Update {latest_version} verfügbar!", fg="red")
-
-                msg = (f"Ihre Version: {local_version}\n"
-                       f"Neueste Version: {latest_version}\n\n"
-                       "Möchten Sie zur Download-Seite wechseln?")
-
-                result = messagebox.askyesno("Update verfügbar! 🚀", msg)
-
-                if result and download_url:
-                    webbrowser.open(download_url)
-                elif result:
-                    messagebox.showinfo("Download", "Download-URL nicht vom Server bereitgestellt. Prüfen Sie die Webseite.")
-
+                msg = f"Aktuelle Version: {local_version}\nNeue Version: {latest_version}\n\nMöchten Sie das Update jetzt automatisch installieren?"
+                if messagebox.askyesno("Update verfügbar!", msg):
+                    # STARTE AUTO-UPDATE
+                    self.perform_auto_update(download_url)
             else:
-                # Aktuell oder Beta-Version
-                if status_label:
-                    status_label.config(text=f"✅ Ihre Version ({local_version}) ist aktuell.", fg="green")
-                messagebox.showinfo("Aktuell", f"Ihre Version ({local_version}) ist die neueste Version.")
+                if label: label.config(text=f"✅ Version {local_version} ist aktuell.", fg="green")
+                messagebox.showinfo("Aktuell", f"Deine Version ({local_version}) ist die neueste.")
 
-        except requests.exceptions.RequestException as e:
-            messagebox.showerror("Update Fehler", f"Fehler bei der Verbindung zum Update-Server: {e}")
-            if status_label:
-                status_label.config(text="❌ Verbindung zum Update-Server fehlgeschlagen.", fg="red")
-        except json.JSONDecodeError:
-            messagebox.showerror("Update Fehler", "Ungültige JSON-Antwort vom Server.")
-            if status_label:
-                status_label.config(text="❌ Server-Antwort ungültig.", fg="red")
         except Exception as e:
-            messagebox.showerror("Update Fehler", f"Ein unerwarteter Fehler ist aufgetreten: {e}")
-            if status_label:
-                status_label.config(text="❌ Unerwarteter Fehler beim Update.", fg="red")
+            if label: label.config(text="❌ Fehler beim Update-Check.", fg="red")
+            messagebox.showerror("Fehler", f"Update-Check fehlgeschlagen: {e}")
+
+    def perform_auto_update(self, download_url):
+        """Lädt die ZIP herunter und entpackt sie."""
+        try:
+            import zipfile, shutil, subprocess
+
+            # 1. ZIP herunterladen
+            zip_file = "update_package.zip"
+            r = requests.get(download_url, stream=True)
+            with open(zip_file, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            # 2. Entpacken in temporären Ordner
+            temp_dir = "update_temp"
+            if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+
+            # 3. Externes Updater-Skript erstellen (tauscht Dateien aus während App zu ist)
+            self.create_updater_script(temp_dir)
+
+            messagebox.showinfo("Installation", "Update geladen! Das Programm wird nun beendet und installiert das Update. Bitte warten Sie kurz.")
+
+            # 4. Updater starten und App schließen
+            if platform.system() == "Windows":
+                subprocess.Popen(["cmd", "/c", "updater.bat"], shell=True)
+            else:
+                subprocess.Popen(["sh", "updater.sh"])
+
+            sys.exit() # Beendet all.py
+
+        except Exception as e:
+            messagebox.showerror("Update fehlgeschlagen", f"Fehler während der Installation: {e}")
+
+    def create_updater_script(self, source):
+        """Erstellt die Batch/Shell Datei für den Dateitausch."""
+        if platform.system() == "Windows":
+            with open("updater.bat", "w") as f:
+                f.write(f"@echo off\n")
+                f.write(f"timeout /t 2 /nobreak > nul\n") # Warten bis App zu ist
+                f.write(f"xcopy /s /y \"{source}\\*\" \".\"\n") # Dateien überschreiben
+                f.write(f"rd /s /q \"{source}\"\n") # Aufräumen
+                f.write(f"del \"update_package.zip\"\n")
+                f.write(f"start python all.py\n") # Neustart
+                f.write(f"del \"%~f0\"\n")
+        else:
+            with open("updater.sh", "w") as f:
+                f.write(f"#!/bin/bash\nsleep 2\ncp -r {source}/* .\n")
+                f.write(f"rm -rf {source} update_package.zip\npython3 all.py &\nrm -- \"$0\"\n")
 
 # -------------------- ARTIKEL MODUL (MEDIENVERWALTUNG) --------------------
 
