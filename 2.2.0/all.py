@@ -590,7 +590,7 @@ class ArtikelModul(tk.Frame):
             return
 
         try:
-            url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+            url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}&key=AIzaSyD1_7OLNIbDQ6s77wwY2wzI5Fc7JiuwPHM"
             response = requests.get(url)
             response.raise_for_status()
             data = response.json()
